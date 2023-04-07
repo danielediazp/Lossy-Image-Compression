@@ -1,7 +1,10 @@
 use crate::structs::{Block, ComponentVideo, DCTCoefficient, RgbFloats};
 use array2::array2::Array2;
 use bitpack::bitpack::{gets, getu, news, newu};
-use csc411_arith::{chroma_of_index, index_of_chroma};
+//use csc411_arith::{chroma_of_index, index_of_chroma};
+use crate::component_video_and_blocks::{compute_component_video, get_block};
+use crate::dct_coeff::{compute_dct, from_dct_to_block};
+use crate::rgb::{component_back_to_rgb_floats, compute_rgb_floats, from_rgb_float_to_rgb};
 use csc411_image::Rgb;
 
 /// This functions takes an Rgb image stored in Array2 Struct with its denominator and converts
@@ -19,23 +22,6 @@ pub fn rgb_to_floats(image: Array2<Rgb>, image_denominator: u16) -> Array2<RgbFl
     Array2::from_row_major(image.get_width(), image.get_height(), rgb_data)
 }
 
-/// This function takes and a Rgb pixel with the image denominator, and it turns the pixel
-/// into a Floating point representation stored as an RgbFloats.
-///=
-/// # Arguments
-/// * `pixel`: Rgb struct representing the red, green, and blue color density of the image
-fn compute_rgb_floats(pixel: Rgb, denominator: f64) -> RgbFloats {
-    let r = pixel.red as f64 / denominator;
-    let g = pixel.green as f64 / denominator;
-    let b = pixel.blue as f64 / denominator;
-
-    RgbFloats {
-        red: r,
-        green: g,
-        blue: b,
-    }
-}
-
 /// This function takes an image where each Rgb value is represented as a floating
 /// point, and it turns the floating point representation into a Component Video
 /// representation of the pixels.
@@ -51,20 +37,6 @@ pub fn rbg_floats_to_component_video(image: Array2<RgbFloats>) -> Array2<Compone
     Array2::from_row_major(image.get_width(), image.get_height(), cv)
 }
 
-/// This function takes the floating point representation of an Rgb and turns it
-/// into a Component Video representation.
-///
-/// # Arguments
-/// * `pixel`: Floating representation of the pixel red, green, and blue color density.
-fn compute_component_video(pixel: RgbFloats) -> ComponentVideo {
-    let y = 0.299 * pixel.red + 0.587 * pixel.green + 0.114 * pixel.blue;
-    let pb = -0.168736 * pixel.red - 0.331264 * pixel.green + 0.5 * pixel.blue;
-    let pr = 0.5 * pixel.red - 0.418688 * pixel.green - 0.081312 * pixel.blue;
-
-    ComponentVideo { y, pb, pr }
-}
-
-
 /// This function takes a Array2 of ComponentVideo struct which represent an image
 /// in component video format, and it extracts the 2x2 block of pixels to further
 /// undergo under compression.
@@ -77,30 +49,12 @@ pub fn component_video_to_blocks(image_in_component_vid: Array2<ComponentVideo>)
     let mut block_arr: Vec<Block> = Vec::new();
     for row in (0..height).step_by(2) {
         for col in (0..width).step_by(2) {
-            let block = get_block(& image_in_component_vid, row, col);
+            let block = get_block(&image_in_component_vid, row, col);
             block_arr.push(block);
         }
     }
 
     Array2::from_row_major(width, height, block_arr)
-}
-
-/// This functions gets the 2x2 Block at the current `row` and `col`. The current
-/// `row` `col` location can be consider as the top right, `row` `col` + 1 is the
-/// top left, `row` + 1 `col` is the bottom right , and `row` + 1 `col` + 1 is the bottom
-/// left pixel in the Block. This function servers as a helper function to component_video_to_blocks
-///
-/// # Arguments
-/// * `cv_arr` : A 1D array representing a 2D matrix of ComponentVideo pixels
-/// * `row` : Current row that you are trying to get the block for "it must be step by 2"
-/// * `col`: Current col that you are trying to get the block for "it must be step by 2"
-fn get_block(cv_arr: &Array2<ComponentVideo>, row: usize, col: usize) -> Block {
-    let y1 = cv_arr.get(col, row).unwrap().clone();
-    let y2 = cv_arr.get(col + 1, row).unwrap().clone();
-    let y3 = cv_arr.get(col, row + 1).unwrap().clone();
-    let y4 = cv_arr.get(col + 1, row + 1).unwrap().clone();
-
-    Block { y1, y2, y3, y4 }
 }
 
 /// Takes a 2x2 block of pixels represented in ComponentVideo format, and turn this block
@@ -118,35 +72,6 @@ pub fn blocks_to_dct(blocks: Array2<Block>) -> Array2<DCTCoefficient> {
     Array2::from_row_major(blocks.get_width(), blocks.get_height(), dct_arr)
 }
 
-/// This function compute the DCTCoefficient of a 2x2 Block of ComponentVideos. It serves
-/// as a helper function for block_to_dct.
-///
-/// # Arguments
-/// `block`: 2x2 block of ComponentVideo
-fn compute_dct(block: Block) -> DCTCoefficient {
-    let denominator: f64 = 4.0;
-    let y1 = block.y1;
-    let y2 = block.y2;
-    let y3 = block.y3;
-    let y4 = block.y4;
-    let a = (y4.y + y3.y + y2.y + y1.y) / denominator;
-    let b = (y4.y + y3.y - y2.y - y1.y) / denominator;
-    let c = (y4.y - y3.y + y2.y - y1.y) / denominator;
-    let d = (y4.y - y3.y - y2.y + y1.y) / denominator;
-    let average_pb = (y1.pb + y2.pb + y3.pb + y4.pb) / denominator;
-    let average_pr = (y1.pr + y2.pr + y3.pr + y4.pr) / denominator;
-    // Quantized DCTCoefficients values
-    DCTCoefficient {
-        a: (a * 511.0).round(),
-        b: (b.clamp(-0.3, 0.3) * 50.0).round(),
-        c: (c.clamp(-0.3, 0.3) * 50.0).round(),
-        d: (d.clamp(-0.3, 0.3) * 50.0).round(),
-        index_of_pb: index_of_chroma(average_pb as f32),
-        index_of_pr: index_of_chroma(average_pr as f32),
-    }
-}
-
-
 /// This function takes Array2 Struct of the DCTCoefficient that are obtained from each
 /// 2x2 block of pixel inside the original image, and it pack each DCTCoefficient word
 /// into a 32 bit word that is been represented as a 64 bit word for the purpose of not
@@ -156,7 +81,7 @@ fn compute_dct(block: Block) -> DCTCoefficient {
 /// * `dct_arr`: Array2 Struct of dct coefficient values calculated from the 2x2 blocks of pixels
 pub fn pack_values_into_word(dct_arr: Array2<DCTCoefficient>) -> Array2<[u8; 4]> {
     let mut output_image = Vec::new();
-    for value in dct_arr.data.iter(){
+    for value in dct_arr.data.iter() {
         let mut word = 0_u64;
         word = newu(word, 9, 23, value.a as u64).unwrap();
         word = news(word, 5, 18, value.b as i64).unwrap();
@@ -169,7 +94,6 @@ pub fn pack_values_into_word(dct_arr: Array2<DCTCoefficient>) -> Array2<[u8; 4]>
 
     Array2::from_row_major(dct_arr.get_width(), dct_arr.get_height(), output_image)
 }
-
 
 // Decompression
 
@@ -220,52 +144,6 @@ pub fn from_dct_to_component_video(dct_arr: Array2<DCTCoefficient>) -> Array2<Bl
     Array2::from_row_major(dct_arr.get_width(), dct_arr.get_height(), block)
 }
 
-/// Takes a DCTCoefficient and converges the coefficient to a 2x2 block of component video;
-///
-/// # Argument
-/// * `coefficient`: DCTCoefficient storing the information of the 2x2 block of pixels
-fn from_dct_to_block(coefficient: DCTCoefficient) -> Block {
-    // Quantized representation of DCTCoefficient
-    let a = (coefficient.a / 511.0).clamp(0.0, 1.0);
-    let b = (coefficient.b / 50.0).clamp(-0.3, 0.3);
-    let c = (coefficient.c / 50.0).clamp(-0.3, 0.3);
-    let d = (coefficient.d / 50.0).clamp(-0.3, 0.3);
-    // Compute the y value for each block
-    let y1 = a - b - c + d;
-    let y2 = a - b + c - d;
-    let y3 = a + b - c - d;
-    let y4 = a + b + c + d;
-    // Get the lumin of each block
-    let pb = chroma_of_index(coefficient.index_of_pb) as f64;
-    let pr = chroma_of_index(coefficient.index_of_pr) as f64;
-    // get block
-    let top_left = dct_to_component_video(y1, pb, pr);
-    let top_right = dct_to_component_video(y2, pb, pr);
-    let bottom_left = dct_to_component_video(y3, pb, pr);
-    let bottom_right = dct_to_component_video(y4, pb, pr);
-
-    Block {
-        y1: top_left,
-        y2: top_right,
-        y3: bottom_left,
-        y4: bottom_right,
-    }
-}
-
-/// Takes a y, pb, pr and returns a ComponentVideo Struct storing the values;
-///
-/// # Arguments
-/// * `y`: Luminance value of the pixel
-/// * `pb`: First side channel that transmit color difference signals
-/// * `pr`: Second side channel that transmit color difference signals
-fn dct_to_component_video(y: f64, index_of_pb: f64, index_of_pr: f64) -> ComponentVideo {
-    ComponentVideo {
-        y,
-        pb: index_of_pb,
-        pr: index_of_pr,
-    }
-}
-
 /// This function takes an Array2 Struct 2x2 block of ComponentVideo representing pixel in this format
 /// , and it return an Array2 struct of ComponentVideo where each pixel is located at its core spot.
 /// Returns a Array2 Struct of ComponentVideo.
@@ -297,19 +175,6 @@ pub fn component_video_back_to_rbg_floats(cv_image: Array2<ComponentVideo>) -> A
     Array2::from_row_major(cv_image.get_width(), cv_image.get_height(), rgb_float_arr)
 }
 
-/// This function takes a pixel represented in ComponentVideo format, and it converges the pixel
-/// back to RgbFloat format. Returns a RgbFloat struct with the pixel data.
-///
-/// # Argument
-/// * `cv`: pixel in ComponentVideo format
-fn component_back_to_rgb_floats(cv: ComponentVideo) -> RgbFloats {
-    let red = (1.0 * cv.y + 0.0 * cv.pb + 1.402 * cv.pr) * 255.0;
-    let green = (1.0 * cv.y - 0.344136 * cv.pb - 0.714136 * cv.pr) * 255.0;
-    let blue = (1.0 * cv.y + 1.772 * cv.pb + 0.0 * cv.pr) * 255.0;
-
-    RgbFloats { red, green, blue }
-}
-
 /// This function takes an Array2 Struct of pixels represented as RgbFloats and normalizes
 /// each pixel back to Rgb format. Returns a new Array2 struct of Rgb which can be consider
 /// an full decompressed image.
@@ -323,19 +188,6 @@ pub fn rgb_floats_to_rgb(rgb_float_arr: Array2<RgbFloats>) -> Array2<Rgb> {
         .collect();
 
     Array2::from_row_major(rgb_float_arr.get_width(), rgb_float_arr.get_height(), image)
-}
-
-/// This function takes an pixel represented as floating point value and converges the pixel back
-/// to a normal Rgb pixel. Returns a pixel on Rgb format.
-///
-/// # Argument
-/// * `pixel`: pixel which red, green, and blue density are represented as floating point
-fn from_rgb_float_to_rgb(pixel: RgbFloats) -> Rgb {
-    let red = pixel.red as u16;
-    let green = pixel.green as u16;
-    let blue = pixel.blue as u16;
-
-    Rgb { red, green, blue }
 }
 
 /// This function takes a decompressed image inside Array2 Struct of Rgb's and fix the pixels

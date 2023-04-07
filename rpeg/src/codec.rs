@@ -13,12 +13,13 @@ use csc411_image::{Read, Rgb, RgbImage, Write};
 use csc411_rpegio::output_rpeg_data;
 use csc411_rpegio::read_in_rpeg_data;
 
-/// Takes a PPM image `filename` as input and reduces the size of the image by three times compared
-/// to the original image. This is achieve through a lossy image compression process, which trades
-/// pixel information for portability while keeping some pixel quality.
+/// Takes a PPM image `filename` as input or reads from standard in,
+/// and reduces the size of the image by three times compared to the original image.
+/// This is achieve through a lossy image compression process, which trades pixel information for
+/// portability while keeping some pixel quality.
 ///
 /// # Arguments
-/// * `filename`: Location of the PPM within your disk
+/// * `filename`: Location of the PPM within your disk, or None to read from standard in
 pub fn compress(filename: Option<&str>) {
     let original_image = RgbImage::read(filename.as_deref()).unwrap();
     let image_denominator = original_image.denominator;
@@ -39,6 +40,14 @@ pub fn compress(filename: Option<&str>) {
     );
 }
 
+/// Takes a compressed image in the form of a .txt file of raw-bytes of 32 bits words in Bigendian
+/// format or the bytes from standard-in, and decompresses the image back to an Rgb format. The image
+/// undergoes the process of decompression backwards in order to obtain a image similar to the original,
+/// but with less quality "usually not able to appreciate by the human eye."
+///
+/// # Arguments
+/// * `filename`: A .txt extension file of raw 32 byte words in Bigendian format, or None to read from
+/// standard in
 pub fn decompress(filename: Option<&str>) {
     let compressed_image = read_in_rpeg_data(Some(filename.as_deref()).unwrap());
     let (byte_words, image_width, image_height) = compressed_image.unwrap();
