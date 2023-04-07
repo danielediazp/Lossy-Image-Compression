@@ -64,6 +64,7 @@ fn compute_component_video(pixel: RgbFloats) -> ComponentVideo {
     ComponentVideo { y, pb, pr }
 }
 
+
 /// This function takes a Array2 of ComponentVideo struct which represent an image
 /// in component video format, and it extracts the 2x2 block of pixels to further
 /// undergo under compression.
@@ -134,7 +135,7 @@ fn compute_dct(block: Block) -> DCTCoefficient {
     let d = (y4.y - y3.y - y2.y + y1.y) / denominator;
     let average_pb = (y1.pb + y2.pb + y3.pb + y4.pb) / denominator;
     let average_pr = (y1.pr + y2.pr + y3.pr + y4.pr) / denominator;
-
+    // Quantized DCTCoefficients values
     DCTCoefficient {
         a: (a * 511.0).round(),
         b: (b.clamp(-0.3, 0.3) * 50.0).round(),
@@ -145,6 +146,7 @@ fn compute_dct(block: Block) -> DCTCoefficient {
     }
 }
 
+
 /// This function takes Array2 Struct of the DCTCoefficient that are obtained from each
 /// 2x2 block of pixel inside the original image, and it pack each DCTCoefficient word
 /// into a 32 bit word that is been represented as a 64 bit word for the purpose of not
@@ -153,20 +155,21 @@ fn compute_dct(block: Block) -> DCTCoefficient {
 /// # Arguments
 /// * `dct_arr`: Array2 Struct of dct coefficient values calculated from the 2x2 blocks of pixels
 pub fn pack_values_into_word(dct_arr: Array2<DCTCoefficient>) -> Array2<[u8; 4]> {
-    let mut compressed_image = Vec::new();
-    for dct_coefficient in dct_arr.data.iter() {
-        let mut word: u64 = 0_64;
-        word = newu(word, 9, 23, dct_coefficient.a as u64).unwrap();
-        word = news(word, 5, 18, dct_coefficient.b as i64).unwrap();
-        word = news(word, 5, 13, dct_coefficient.c as i64).unwrap();
-        word = news(word, 5, 8, dct_coefficient.d as i64).unwrap();
-        word = newu(word, 4, 4, dct_coefficient.index_of_pb as u64).unwrap();
-        word = newu(word, 4, 0, dct_coefficient.index_of_pr as u64).unwrap();
-        compressed_image.push((word as u32).to_be_bytes());
+    let mut output_image = Vec::new();
+    for value in dct_arr.data.iter(){
+        let mut word = 0_u64;
+        word = newu(word, 9, 23, value.a as u64).unwrap();
+        word = news(word, 5, 18, value.b as i64).unwrap();
+        word = news(word, 5, 13, value.c as i64).unwrap();
+        word = news(word, 5, 8, value.d as i64).unwrap();
+        word = newu(word, 4, 4, value.index_of_pb as u64).unwrap();
+        word = newu(word, 4, 0, value.index_of_pr as u64).unwrap();
+        output_image.push((word as u32).to_be_bytes());
     }
 
-    Array2::from_row_major(dct_arr.get_width(), dct_arr.get_height(), compressed_image)
+    Array2::from_row_major(dct_arr.get_width(), dct_arr.get_height(), output_image)
 }
+
 
 // Decompression
 
@@ -335,6 +338,14 @@ fn from_rgb_float_to_rgb(pixel: RgbFloats) -> Rgb {
     Rgb { red, green, blue }
 }
 
+/// This function takes a decompressed image inside Array2 Struct of Rgb's and fix the pixels
+/// at their expected position. Returns a fully decompressed image.
+///
+/// When decompressing the 2x2 Block of pixels, the blocks are stored in row-major order. The
+/// main purpose of this function is to return the blocks back to block 2x2 order.
+///
+/// # Arguments
+/// * `image`: Array2 Struct of Rgb where blocks are stored in row-major order.
 pub fn fix_pixel_poss(image: Array2<Rgb>) -> Vec<Rgb> {
     let width = image.get_width();
     let height = image.get_height();
