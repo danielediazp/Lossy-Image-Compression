@@ -1,14 +1,6 @@
 # Arith 
 
-- Daniel Diaz & Cameron Castillo 
-
-For this assignment, TA Isaac Chen and Vincent Zhaung provided us with immense help in
-conceptualizing Bitpack. Thanks to their assistance, we were able to successfully implement 
-both the Compressor and Decompressor.
-
-To ensure the correctness of our formulas, we modeled the forward and 
-backward operations within the same .rs f ile, allowing us to perform 
-round-trip testing.
+- Daniel Diaz 
 
 - Architecture
   -
@@ -29,9 +21,3 @@ round-trip testing.
         - trim function added directly to Array2 
 
 
-We spent approximately a week brainstorming a solution for arith and striving to comprehensively understand the 
-necessary steps. It was our belief that grasping the nuances of this assignment was four times 
-more challenging than completing the actual task at hand.
-
-Once we had a complete understanding of how to tackle each step, we were able to implement arith in approximately 
-two days.
