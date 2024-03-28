@@ -1,4 +1,4 @@
-![Rust Logo](https://www.rust-lang.org/static/images/rust-logo-blk.svg)
+
 
 # Simple JPEG
 
@@ -8,6 +8,9 @@ This project presents a Rust implementation of a lossy image compression algorit
 ## Features
 - Lossy JPEG compression: Efficiently reduces the file size of images while maintaining a balance between quality and compression.
 - PPM Image Support: Currently supports `.ppm` format images, making it suitable for a variety of applications and use cases.
+
+### Build With
+![Rust Logo](https://www.rust-lang.org/static/images/rust-logo-blk.svg)
 
 ## Getting Started
 
