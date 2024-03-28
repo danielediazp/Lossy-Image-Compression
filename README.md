@@ -1,4 +1,4 @@
-![Rust Programming Language](https://www.rust-lang.org/static/images/rust-social.jpg)
+![Rust Logo](https://www.rust-lang.org/static/images/rust-logo-blk.svg)
 
 # Simple JPEG
 
@@ -27,14 +27,14 @@ To compress and decompress your images, follow these steps:
 * Ensure Execution Permissions for build.sh:
 
 Before running build.sh, you must ensure it has execution permissions. To do this, navigate to the directory containing build.sh and run the following command:
-     ```sh
+```sh
       chmod +x build.sh
-    ```
+```
 
 * Running the Script:
 
 With execution permissions set, you can now run the script by passing the location of the image to compress and the desired name for the new image as arguments:
-    ```sh
+```sh
     ./build.sh /path/to/image.ppm new_image_name
    ```
 
