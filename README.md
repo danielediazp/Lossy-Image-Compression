@@ -1,4 +1,4 @@
-![Rust Programming Language](https://rust-lang.org/logos/rust-logo-512x512.png)
+![Rust Programming Language](https://www.rust-lang.org/static/images/rust-social.jpg)
 
 # Simple JPEG
 
@@ -14,7 +14,31 @@ This project presents a Rust implementation of a lossy image compression algorit
 ### Prerequisites
 Before running this program, ensure you have Rust installed on your system. Rust's toolchain, including `cargo`, should be properly configured to compile and run Rust projects. If you're new to Rust, follow the official [installation guide](https://www.rust-lang.org/tools/install) to set up your environment.
 
-### Installation
+
+### Installation 
 1. Clone the repository to your local machine:
-```bash
-git clone https://github.com/your-username/simple-jpeg.git
+     ```sh
+      git clone https://github.com/danielediazp/Lossy-Image-Compression.git
+    ```
+
+### How to Run
+To compress and decompress your images, follow these steps:
+
+* Ensure Execution Permissions for build.sh:
+
+Before running build.sh, you must ensure it has execution permissions. To do this, navigate to the directory containing build.sh and run the following command:
+     ```sh
+      chmod +x build.sh
+    ```
+
+* Running the Script:
+
+With execution permissions set, you can now run the script by passing the location of the image to compress and the desired name for the new image as arguments:
+    ```sh
+    ./build.sh /path/to/image.ppm new_image_name
+   ```
+
+Replace /path/to/image.ppm with the path to your .ppm format image and new_image_name with the desired name for the output image.
+
+The script will generate the compressed image in the current directory from where you call the build.sh script. The output format will also be a .ppm image.
+
